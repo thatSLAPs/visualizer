@@ -1,8 +1,8 @@
 const canvas = document.getElementById("waveCanvas");
 const ctx = canvas.getContext("2d");
+const container = document.getElementById("canvas-container");
 const frequencyInput = document.getElementById("frequency");
 
-const sources = [];
 const gridSize = 200; // Higher resolution grid
 const damping = 0.99; // Damping factor for wave decay
 const speed = 2; // Speed of wave propagation
@@ -15,34 +15,58 @@ const velocityGrid = Array(gridSize)
   .fill(null)
   .map(() => Array(gridSize).fill(0));
 
-// Convert canvas coordinates to grid coordinates
-function toGrid(x, y) {
-  return {
-    gx: Math.floor((x / canvas.width) * gridSize),
-    gy: Math.floor((y / canvas.height) * gridSize),
-  };
+// Speaker buttons and their states
+const speakers = [];
+let frequency = parseFloat(frequencyInput.value);
+
+// Function to create speaker buttons around the boundary
+function createSpeakers() {
+  const canvasWidth = canvas.width;
+  const canvasHeight = canvas.height;
+
+  const spacing = 50; // Distance between speakers
+  const radius = 10; // Speaker button size
+
+  // Add speakers along the top and bottom edges
+  for (let x = spacing / 2; x < canvasWidth; x += spacing) {
+    addSpeaker(x, radius); // Top edge
+    addSpeaker(x, canvasHeight - radius); // Bottom edge
+  }
+
+  // Add speakers along the left and right edges
+  for (let y = spacing / 2; y < canvasHeight; y += spacing) {
+    addSpeaker(radius, y); // Left edge
+    addSpeaker(canvasWidth - radius, y); // Right edge
+  }
 }
 
-// Add a new sound source on click (only on the boundary)
-canvas.addEventListener("click", (event) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
+// Function to add a speaker button
+function addSpeaker(x, y) {
+  const button = document.createElement("div");
+  button.className = "speaker";
+  button.style.left = `${x - 10}px`;
+  button.style.top = `${y - 10}px`;
 
-  const frequency = parseFloat(frequencyInput.value);
+  button.dataset.active = "false"; // Initially off
 
-  if (frequency >= 1 && frequency <= 50) {
-    // Check if the click is on the boundary
-    if (x <= 5 || x >= canvas.width - 5 || y <= 5 || y >= canvas.height - 5) {
-      sources.push({ x, y, frequency, phase: 0 });
-      console.log(`Added source at (${x}, ${y}) with frequency ${frequency}Hz`);
+  button.addEventListener("click", () => {
+    const isActive = button.dataset.active === "true";
+    button.dataset.active = !isActive;
+    button.classList.toggle("active", !isActive);
+    
+    if (!isActive) {
+      speakers.push({ x, y, phase: 0 });
     } else {
-      alert("Please click on the boundary of the canvas to place a source.");
+      // Remove speaker from active list
+      const index = speakers.findIndex((s) => s.x === x && s.y === y);
+      if (index !== -1) speakers.splice(index, 1);
     }
-  } else {
-    alert("Frequency must be between 1 and 50 Hz.");
-  }
-});
+    
+    console.log(`Speaker at (${x}, ${y}) is now ${!isActive ? "ON" : "OFF"}`);
+  });
+
+  container.appendChild(button);
+}
 
 // Update the wave simulation
 function updateWave() {
@@ -54,17 +78,17 @@ function updateWave() {
     }
   }
 
-  // Add waves from sources
-  sources.forEach((source) => {
-    const { gx, gy } = toGrid(source.x, source.y);
-    const timeFactor = Math.sin(source.phase * Math.PI * 2);
+  // Add waves from active speakers
+  speakers.forEach((speaker) => {
+    const { gx, gy } = toGrid(speaker.x, speaker.y);
+    const timeFactor = Math.sin(speaker.phase * Math.PI * 2);
 
     if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
-      grid[gx][gy] += timeFactor * 10; // Add energy at source point
+      grid[gx][gy] += timeFactor * speed; // Add energy at source point
     }
 
-    source.phase += source.frequency / speed / gridSize;
-    if (source.phase > 1) source.phase -= 1;
+    speaker.phase += frequency / speed / gridSize;
+    if (speaker.phase > 1) speaker.phase -= Math.floor(speaker.phase);
   });
 
   // Propagate waves using finite difference method
@@ -75,13 +99,14 @@ function updateWave() {
         grid[x + 1][y] +
         grid[x][y - 1] +
         grid[x][y + 1] -
-        grid[x][y] * 4;
+        grid[x][y] * speed;
+
       velocityGrid[x][y] += laplacian * speed * speed;
     }
   }
 }
 
-// Render the wave simulation
+// Render the wave simulation on the canvas
 function renderWave() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -91,14 +116,15 @@ function renderWave() {
   for (let x = 0; x < gridSize; x++) {
     for (let y = 0; y < gridSize; y++) {
       const intensity = Math.min(Math.max(grid[x][y], -1), +1); // Clamp values
-      const colorValue = Math.floor((intensity + 1) * (255 / 2));
+      const colorValue = Math.floor((intensity + speed) * (255 / speed));
       ctx.fillStyle = `rgb(${colorValue}, ${colorValue}, ${255 - colorValue})`;
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
     }
   }
 
-  // Draw sources as red dots on the boundary
-  sources.forEach((source) => {
-    ctx.beginPath();
-    ctx.arc(source.x, source.y, Math.max(cellWidth /2),Math.PI*2)
-}}
+ requestAnimationFrame(renderWave);
+}
+
+// Convert canvas coordinates to grid coordinates
+function toGrid(x, y) {
+   return
