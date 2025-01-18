@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Sound Wave Visualizer</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: auto;
+    }
+    #controls {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="waveCanvas" width="800" height="600"></canvas>
+  <div id="controls">
+    <button id="addSource">Add Sound Source</button>
+    <label for="frequency">Frequency (Hz):</label>
+    <input type="number" id="frequency" value="440" min="20" max="2000">
+  </div>
+  <script src="visualizer.js"></script>
+</body>
+</html>
