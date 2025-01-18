@@ -1,20 +1,19 @@
-const canvas = document.getElementById('waveCanvas');
-const ctx = canvas.getContext('2d');
-const addSourceButton = document.getElementById('addSource');
-const frequencyInput = document.getElementById('frequency');
+const canvas = document.getElementById("waveCanvas");
+const ctx = canvas.getContext("2d");
+const frequencyInput = document.getElementById("frequency");
 
 const sources = [];
-const gridSize = 100; // Resolution of the grid
+const gridSize = 200; // Higher resolution grid
 const damping = 0.99; // Damping factor for wave decay
 const speed = 2; // Speed of wave propagation
 
 // Create a grid for the simulation
-const grid = Array(gridSize).fill(null).map(() =>
-  Array(gridSize).fill(0)
-);
-const velocityGrid = Array(gridSize).fill(null).map(() =>
-  Array(gridSize).fill(0)
-);
+const grid = Array(gridSize)
+  .fill(null)
+  .map(() => Array(gridSize).fill(0));
+const velocityGrid = Array(gridSize)
+  .fill(null)
+  .map(() => Array(gridSize).fill(0));
 
 // Convert canvas coordinates to grid coordinates
 function toGrid(x, y) {
@@ -24,16 +23,24 @@ function toGrid(x, y) {
   };
 }
 
-// Add a new sound source
-addSourceButton.addEventListener('click', () => {
+// Add a new sound source on click (only on the boundary)
+canvas.addEventListener("click", (event) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
   const frequency = parseFloat(frequencyInput.value);
+
   if (frequency >= 1 && frequency <= 50) {
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    sources.push({ x, y, frequency, phase: 0 });
-    console.log(`Added source at (${x}, ${y}) with frequency ${frequency}Hz`);
+    // Check if the click is on the boundary
+    if (x <= 5 || x >= canvas.width - 5 || y <= 5 || y >= canvas.height - 5) {
+      sources.push({ x, y, frequency, phase: 0 });
+      console.log(`Added source at (${x}, ${y}) with frequency ${frequency}Hz`);
+    } else {
+      alert("Please click on the boundary of the canvas to place a source.");
+    }
   } else {
-    alert('Frequency must be between 1 and 50 Hz.');
+    alert("Frequency must be between 1 and 50 Hz.");
   }
 });
 
@@ -51,9 +58,11 @@ function updateWave() {
   sources.forEach((source) => {
     const { gx, gy } = toGrid(source.x, source.y);
     const timeFactor = Math.sin(source.phase * Math.PI * 2);
+
     if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
       grid[gx][gy] += timeFactor * 10; // Add energy at source point
     }
+
     source.phase += source.frequency / speed / gridSize;
     if (source.phase > 1) source.phase -= 1;
   });
@@ -81,24 +90,15 @@ function renderWave() {
 
   for (let x = 0; x < gridSize; x++) {
     for (let y = 0; y < gridSize; y++) {
-      const intensity = Math.min(
-        Math.max(grid[x][y], -1),
-        +1
-      ); // Clamp values
+      const intensity = Math.min(Math.max(grid[x][y], -1), +1); // Clamp values
       const colorValue = Math.floor((intensity + 1) * (255 / 2));
       ctx.fillStyle = `rgb(${colorValue}, ${colorValue}, ${255 - colorValue})`;
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
     }
   }
 
-  requestAnimationFrame(renderWave);
-}
-
-// Main simulation loop
-function loop() {
-  updateWave();
-}
-
-// Start simulation and rendering loops
-setInterval(loop, 16); // ~60 FPS update rate
-renderWave();
+  // Draw sources as red dots on the boundary
+  sources.forEach((source) => {
+    ctx.beginPath();
+    ctx.arc(source.x, source.y, Math.max(cellWidth /2),Math.PI*2)
+}}
