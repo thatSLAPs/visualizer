@@ -14,14 +14,26 @@
       text-align: center;
       margin-top: 20px;
     }
+    .speaker {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-color: gray;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .speaker.active {
+      background-color: red;
+    }
   </style>
 </head>
 <body>
-  <canvas id="waveCanvas" width="800" height="600"></canvas>
+  <div id="canvas-container" style="position: relative; width: 800px; height: 600px; margin: auto;">
+    <canvas id="waveCanvas" width="800" height="600"></canvas>
+  </div>
   <div id="controls">
     <label for="frequency">Frequency (Hz):</label>
     <input type="number" id="frequency" value="5" min="1" max="50">
-    <p>Click on the boundary of the canvas to place a sound source.</p>
   </div>
   <script src="visualizer.js"></script>
 </body>
