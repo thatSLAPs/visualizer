@@ -3,74 +3,102 @@ const ctx = canvas.getContext('2d');
 const addSourceButton = document.getElementById('addSource');
 const frequencyInput = document.getElementById('frequency');
 
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let soundSources = [];
+const sources = [];
+const gridSize = 100; // Resolution of the grid
+const damping = 0.99; // Damping factor for wave decay
+const speed = 2; // Speed of wave propagation
 
-// Function to create a sound source
-function createSoundSource(x, y, frequency) {
-  const oscillator = audioContext.createOscillator();
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-  
-  const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.5; // Adjust volume
+// Create a grid for the simulation
+const grid = Array(gridSize).fill(null).map(() =>
+  Array(gridSize).fill(0)
+);
+const velocityGrid = Array(gridSize).fill(null).map(() =>
+  Array(gridSize).fill(0)
+);
 
-  oscillator.connect(gainNode).connect(audioContext.destination);
-  oscillator.start();
-
-  return { x, y, frequency, oscillator };
+// Convert canvas coordinates to grid coordinates
+function toGrid(x, y) {
+  return {
+    gx: Math.floor((x / canvas.width) * gridSize),
+    gy: Math.floor((y / canvas.height) * gridSize),
+  };
 }
 
-// Function to draw the wave pattern
-function drawWaves() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  soundSources.forEach(source => {
-    const { x, y, frequency } = source;
-
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(0, 0, ${Math.min(frequency / 10, 255)}, 0.8)`;
-    ctx.lineWidth = 1;
-
-    const wavelength = canvas.width / (frequency / 50); // Adjust wavelength scaling
-    for (let i = -wavelength; i <= canvas.width + wavelength; i += wavelength / 20) {
-      const distance = Math.hypot(i - x, y - canvas.height / 2);
-      const amplitude = Math.sin((distance / wavelength) * Math.PI * 2);
-
-      const waveY = y + amplitude * 50; // Adjust amplitude scaling
-      ctx.lineTo(i, waveY);
-    }
-
-    ctx.stroke();
-    ctx.closePath();
-    
-    // Draw source point
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = 'red';
-    ctx.fill();
-    ctx.closePath();
-  });
-
-  requestAnimationFrame(drawWaves);
-}
-
-// Add new sound source on button click
+// Add a new sound source
 addSourceButton.addEventListener('click', () => {
   const frequency = parseFloat(frequencyInput.value);
-  
-  if (frequency >= 20 && frequency <= 2000) {
+  if (frequency >= 1 && frequency <= 50) {
     const x = Math.random() * canvas.width;
     const y = Math.random() * canvas.height;
-
-    const newSource = createSoundSource(x, y, frequency);
-    soundSources.push(newSource);
-    
-    console.log(`Added sound source at (${x}, ${y}) with frequency ${frequency}Hz`);
+    sources.push({ x, y, frequency, phase: 0 });
+    console.log(`Added source at (${x}, ${y}) with frequency ${frequency}Hz`);
   } else {
-    alert('Please enter a frequency between 20Hz and 2000Hz.');
+    alert('Frequency must be between 1 and 50 Hz.');
   }
 });
 
-// Start drawing waves
-drawWaves();
+// Update the wave simulation
+function updateWave() {
+  // Reset grid values
+  for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+      velocityGrid[x][y] *= damping;
+      grid[x][y] += velocityGrid[x][y];
+    }
+  }
+
+  // Add waves from sources
+  sources.forEach((source) => {
+    const { gx, gy } = toGrid(source.x, source.y);
+    const timeFactor = Math.sin(source.phase * Math.PI * 2);
+    if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
+      grid[gx][gy] += timeFactor * 10; // Add energy at source point
+    }
+    source.phase += source.frequency / speed / gridSize;
+    if (source.phase > 1) source.phase -= 1;
+  });
+
+  // Propagate waves using finite difference method
+  for (let x = 1; x < gridSize - 1; x++) {
+    for (let y = 1; y < gridSize - 1; y++) {
+      const laplacian =
+        grid[x - 1][y] +
+        grid[x + 1][y] +
+        grid[x][y - 1] +
+        grid[x][y + 1] -
+        grid[x][y] * 4;
+      velocityGrid[x][y] += laplacian * speed * speed;
+    }
+  }
+}
+
+// Render the wave simulation
+function renderWave() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cellWidth = canvas.width / gridSize;
+  const cellHeight = canvas.height / gridSize;
+
+  for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+      const intensity = Math.min(
+        Math.max(grid[x][y], -1),
+        +1
+      ); // Clamp values
+      const colorValue = Math.floor((intensity + 1) * (255 / 2));
+      ctx.fillStyle = `rgb(${colorValue}, ${colorValue}, ${255 - colorValue})`;
+      ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+    }
+  }
+
+  requestAnimationFrame(renderWave);
+}
+
+// Main simulation loop
+function loop() {
+  updateWave();
+}
+
+// Start simulation and rendering loops
+setInterval(loop, 16); // ~60 FPS update rate
+renderWave();
