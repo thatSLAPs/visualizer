@@ -15,9 +15,8 @@ const velocityGrid = Array(gridSize)
   .fill(null)
   .map(() => Array(gridSize).fill(0));
 
-// Speaker buttons and their states
-const speakers = [];
 let frequency = parseFloat(frequencyInput.value);
+const speakers = [];
 
 // Function to create speaker buttons around the boundary
 function createSpeakers() {
@@ -44,7 +43,8 @@ function createSpeakers() {
 function addSpeaker(x, y) {
   const button = document.createElement("div");
   button.className = "speaker";
-  button.style.left = `${x - 10}px`;
+  
+  button.style.left = `${x - 10}px`; // Centering the button
   button.style.top = `${y - 10}px`;
 
   button.dataset.active = "false"; // Initially off
@@ -53,7 +53,7 @@ function addSpeaker(x, y) {
     const isActive = button.dataset.active === "true";
     button.dataset.active = !isActive;
     button.classList.toggle("active", !isActive);
-    
+
     if (!isActive) {
       speakers.push({ x, y, phase: 0 });
     } else {
@@ -81,14 +81,14 @@ function updateWave() {
   // Add waves from active speakers
   speakers.forEach((speaker) => {
     const { gx, gy } = toGrid(speaker.x, speaker.y);
-    const timeFactor = Math.sin(speaker.phase * Math.PI * 2);
+    const timeFactor = Math.sin(speaker.phase * Math.PI * speed);
 
     if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
       grid[gx][gy] += timeFactor * speed; // Add energy at source point
     }
 
     speaker.phase += frequency / speed / gridSize;
-    if (speaker.phase > 1) speaker.phase -= Math.floor(speaker.phase);
+    if (speaker.phase > Math.PI * speed) speaker.phase -= Math.PI * speed;
   });
 
   // Propagate waves using finite difference method
@@ -107,6 +107,7 @@ function updateWave() {
 }
 
 // Render the wave simulation on the canvas
+// Render the wave simulation on the canvas
 function renderWave() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -121,10 +122,3 @@ function renderWave() {
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
     }
   }
-
- requestAnimationFrame(renderWave);
-}
-
-// Convert canvas coordinates to grid coordinates
-function toGrid(x, y) {
-   return
